@@ -1,0 +1,17 @@
+# Ignore the target directory
+/target/
+
+# Ignore Cargo.lock if you want to allow for flexible dependencies
+# Cargo.lock
+
+# Ignore editor-specific files
+.vscode/
+.idea/
+*.swp
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore any local configuration files
+*.env
