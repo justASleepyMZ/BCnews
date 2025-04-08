@@ -1,1 +1,0 @@
-C:\Users\admin\Downloads\block\crypto_news_service\target\debug\crypto_news_service.exe: C:\Users\admin\Downloads\block\crypto_news_service\src\api.rs C:\Users\admin\Downloads\block\crypto_news_service\src\main.rs C:\Users\admin\Downloads\block\crypto_news_service\src\models.rs
