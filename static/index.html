@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Info</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <h1>Cryptocurrency Information</h1>
+    <div class="input-group">
+        <label for="crypto-symbol">Enter Cryptocurrency Symbol (e.g., BTC, LTC):</label>
+        <input type="text" id="crypto-symbol" />
+    </div>
+    <button onclick="fetchCryptoInfo()">Get Info</button>
+    <div class="result" id="result"></div>
+    <div class="news" id="news"></div>
+</div>
+<script>
+    async function fetchCryptoInfo() {
+        const symbol = document.getElementById('crypto-symbol').value;
+        const response = await fetch(`/crypto?symbol=${symbol}`);
+        const data = await response.json();
+        displayResult(data.crypto);
+        displayNews(data.news);
+    }
+
+    function displayResult(data) {
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = '';
+
+        if (data.status && data.status.error_code === 0) {
+            const cryptoData = data.data[Object.keys(data.data)[0]];
+            resultDiv.innerHTML = `
+                <h2>${cryptoData.name} (${cryptoData.symbol})</h2>
+                <p><strong>Category:</strong> ${cryptoData.category}</p>
+                <p><strong>Description:</strong> ${cryptoData.description}</p>
+                <p><strong>Logo:</strong> <img src="${cryptoData.logo}" alt="${cryptoData.name} logo" width="50" /></p>
+                <p><strong>Website:</strong> <a href="${cryptoData.urls.website[0]}" target="_blank">${cryptoData.urls.website[0]}</a></p>
+            `;
+        } else {
+            resultDiv.innerHTML = '<p>Unable to fetch data. Please check the symbol and try again.</p>';
+        }
+    }
+
+    function displayNews(data) {
+        const newsDiv = document.getElementById('news');
+        newsDiv.innerHTML = '';
+
+        if (data.status === "ok" && data.articles.length > 0) {
+            data.articles.slice(0, 3).forEach(article => {
+                newsDiv.innerHTML += `
+                    <div class="news-card">
+                        <h3>${article.title}</h3>
+                        <p>${article.description}</p>
+                        <a href="${article.url}" target="_blank">Read more</a>
+                    </div>
+                `;
+            });
+        } else {
+            newsDiv.innerHTML = '<p>No news available.</p>';
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,54 +1,57 @@
-use reqwest::{self, header};
-use serde::{Deserialize, Serialize};
-use std::error::Error;
+use actix_web::{web, App, HttpServer, Responder, HttpResponse};
+use serde::Deserialize;
+use reqwest::Client;
 
-const NEWS_API_KEY: &str = "ea78dcaf7fbf4d978078c4cb50820f84";
-
-#[derive(Debug, Serialize, Deserialize)]
-struct NewsResponse {
-    status: String,
-    #[serde(rename = "totalResults")]
-    total_results: u32,
-    articles: Vec<NewsArticle>,
+#[derive(Deserialize)]
+struct CryptoQuery {
+    symbol: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct NewsArticle {
-    title: String,
-    url: String,
-}
+async fn get_crypto_info(query: web::Query<CryptoQuery>) -> impl Responder {
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .unwrap();
+    let cmc_api_key = "48dc7c63-c686-4961-8d22-17522a011f58";
+    let news_api_key = "ea78dcaf7fbf4d978078c4cb50820f84";
+    let crypto_url = format!("https://pro-api.coinmarketcap.com/v1/cryptocurrency/info?symbol={}", query.symbol);
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    println!("Делаем запрос к API...");
-
-    let client = reqwest::Client::new();
-
-    let url = format!(
-        "https://newsapi.org/v2/everything?q=bitcoin&language=en&sortBy=publishedAt&apiKey={}",
-        NEWS_API_KEY
-    );
-
-    let response = client
-        .get(&url)
-        .header(header::USER_AGENT, "MyCryptoNewsApp/1.0")
+    let crypto_response = client.get(&crypto_url)
+        .header("X-CMC_PRO_API_KEY", cmc_api_key)
         .send()
-        .await?;
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
 
-    let status = response.status();
-    let body = response.text().await?;
+    let crypto_data: serde_json::Value = serde_json::from_str(&crypto_response).unwrap();
+    let crypto_name = crypto_data["data"][query.symbol.to_uppercase()]["name"].as_str().unwrap_or(query.symbol.as_str());
 
-    if !status.is_success() {
-        return Err(format!("Request failed with status: {} Body: {}", status, body).into());
-    }
+    let news_url = format!("https://newsapi.org/v2/everything?q={}&apiKey={}", crypto_name, news_api_key);
+    let news_response = client.get(&news_url)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
 
-    let news: NewsResponse = serde_json::from_str(&body)?;
+    let combined_response = format!(r#"{{"crypto": {}, "news": {}}}"#, crypto_response, news_response);
 
-    println!("Нашли {} новостей про биткоин:\n", news.total_results);
+    HttpResponse::Ok().body(combined_response)
+}
 
-    for article in news.articles.iter().take(10) {
-        println!("• {} \n  {}", article.title, article.url);
-    }
+use actix_files as fs;
 
-    Ok(())
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .route("/crypto", web::get().to(get_crypto_info))
+            .service(fs::Files::new("/", "./static").index_file("index.html"))
+    })
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
 }
